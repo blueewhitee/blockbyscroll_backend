@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 
 interface AnalyzeRequestBody {
   content: string;
@@ -129,7 +130,10 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
 
     // Additional business logic validation
     if (context.scrollCount > context.maxScrolls + 100) { // Allow some buffer for edge cases
-      console.warn(`Validation warning: scrollCount (${context.scrollCount}) significantly exceeds maxScrolls (${context.maxScrolls})`);
+      logger.warn('Validation warning: scrollCount significantly exceeds maxScrolls', {
+        scrollCount: context.scrollCount,
+        maxScrolls: context.maxScrolls
+      });
     }
 
     if (body.content.length > 500000) { // 500KB limit for content
@@ -143,16 +147,20 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
     // Basic domain format validation (non-breaking)
     const domainRegex = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!domainRegex.test(context.domain)) {
-      console.warn(`Validation warning: domain "${context.domain}" doesn't match expected format, but allowing request to proceed`);
+      logger.warn('Validation warning: domain format unusual but allowing request', {
+        domain: context.domain
+      });
     }
 
     // All validations passed
     next();
 
   } catch (error) {
-    console.error('Validation middleware error:', error);
+    logger.error('Validation middleware error', { 
+      error: error instanceof Error ? error.message : String(error)
+    });
     // Don't break the request on validation errors - log and continue
-    console.warn('Validation middleware encountered an error, allowing request to proceed');
+    logger.warn('Validation middleware encountered an error, allowing request to proceed');
     next();
   }
 };

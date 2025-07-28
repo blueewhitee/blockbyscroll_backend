@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 export interface GeminiConfig {
   apiKey: string;
   model: string;
@@ -59,7 +61,7 @@ export class GeminiService {
       const response = await this.callGeminiAPI(prompt);
       return this.parseResponse(response);
     } catch (error) {
-      console.error('GEMINI: Error analyzing content:', error);
+      logger.error('Error analyzing content', { error: error instanceof Error ? error.message : String(error) });
       return this.getFallbackResponse(error);
     }
   }
@@ -120,10 +122,12 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
   private async callGeminiAPI(prompt: string): Promise<string> {
     const url = `${this.baseUrl}/${this.config.model}:generateContent?key=${this.config.apiKey}`;
     
-    console.log('GEMINI: Making API call to:', url.replace(this.config.apiKey, 'API_KEY_HIDDEN'));
-    console.log('GEMINI: Model:', this.config.model);
-    console.log('GEMINI: Temperature:', this.config.temperature);
-    console.log('GEMINI: Max tokens:', this.config.maxTokens);
+    logger.debug('Making API call to Gemini', { 
+      url: url.replace(this.config.apiKey, 'API_KEY_HIDDEN'),
+      model: this.config.model,
+      temperature: this.config.temperature,
+      maxTokens: this.config.maxTokens
+    });
     
     const requestBody = {
       contents: [
@@ -153,7 +157,7 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
       ]
     };
 
-    console.log('GEMINI: Request body:', JSON.stringify(requestBody, null, 2));
+    logger.debug('Gemini API request body', { requestBody });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -164,33 +168,40 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
       body: JSON.stringify(requestBody)
     });
 
-    console.log('GEMINI: Response status:', response.status);
-    console.log('GEMINI: Response headers:', Object.fromEntries(response.headers.entries()));
+    logger.debug('Gemini API response status', { 
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries())
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('GEMINI: API Error Response:', errorText);
+      logger.error('Gemini API error response', { 
+        status: response.status,
+        errorText 
+      });
       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     // Fix: Properly type the response
     const data = await response.json() as GeminiApiResponse;
-    console.log('GEMINI: Raw API Response:', JSON.stringify(data, null, 2));
+    logger.debug('Raw Gemini API response', { data });
     
     if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      console.error('GEMINI: Invalid response structure:', data);
+      logger.error('Invalid Gemini response structure', { data });
       throw new Error('Invalid response format from Gemini API');
     }
 
     const responseText = data.candidates[0].content.parts[0].text;
-    console.log('GEMINI: Extracted response text:', responseText);
+    logger.debug('Extracted Gemini response text', { responseText });
     
     return responseText;
   }
 
   private parseResponse(responseText: string): AIAnalysisResponse {
-    console.log('GEMINI: Raw response text for parsing:', responseText);
-    console.log('GEMINI: Response text length:', responseText.length);
+    logger.debug('Parsing Gemini response', { 
+      responseText,
+      responseLength: responseText.length 
+    });
     
     try {
       // Clean the response text more thoroughly
@@ -225,14 +236,14 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
         cleanedText = cleanedText.substring(0, jsonEnd + 1);
       }
       
-      console.log('GEMINI: Cleaned text for parsing:', cleanedText);
+      logger.debug('Cleaned text for JSON parsing', { cleanedText });
       
       const parsed = JSON.parse(cleanedText);
-      console.log('GEMINI: Successfully parsed JSON:', parsed);
+      logger.debug('Successfully parsed JSON from Gemini', { parsed });
       
       // Validate required fields exist
       if (!parsed.user_pattern || !parsed.recommended_action) {
-        console.error('GEMINI: Missing required fields in response:', parsed);
+        logger.error('Missing required fields in Gemini response', { parsed });
         throw new Error('Invalid response structure');
       }
       
@@ -249,19 +260,23 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
         confidence_score: Math.max(0, Math.min(1, parsed.confidence_score || 0.8))
       };
     } catch (error) {
-      console.error('GEMINI: Error parsing response:', error);
-      console.error('GEMINI: Failed to parse text:', responseText);
+      logger.error('Error parsing Gemini response', { 
+        error: error instanceof Error ? error.message : String(error),
+        responseText 
+      });
       
       // Try one more time with a simple regex extraction
       try {
         const simpleMatch = responseText.match(/\{[^{}]*"user_pattern"[^{}]*\}/);
         if (simpleMatch) {
           const parsed = JSON.parse(simpleMatch[0]);
-          console.log('GEMINI: Recovered with simple regex:', parsed);
+          logger.info('Recovered Gemini response with simple regex', { parsed });
           return this.normalizeResponse(parsed);
         }
       } catch (recoveryError) {
-        console.error('GEMINI: Recovery attempt failed:', recoveryError);
+        logger.error('Recovery attempt failed', { 
+          recoveryError: recoveryError instanceof Error ? recoveryError.message : String(recoveryError)
+        });
       }
       
       throw new Error('Failed to parse AI response');
@@ -283,7 +298,9 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
   }
 
   private getFallbackResponse(error: any): AIAnalysisResponse {
-    console.error('GEMINI: Using fallback response due to error:', error);
+    logger.error('Using fallback response due to error', { 
+      error: error instanceof Error ? error.message : String(error)
+    });
     
     return {
       user_pattern: 'Casual Browsing/Catch-up',
@@ -316,7 +333,9 @@ NOW ANALYZE AND RETURN ONLY JSON:`;
       await this.analyzeContent(testRequest);
       return true;
     } catch (error) {
-      console.error('GEMINI: Connection test failed:', error);
+      logger.error('Gemini connection test failed', { 
+        error: error instanceof Error ? error.message : String(error)
+      });
       return false;
     }
   }

@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error.middleware';
 import { validateRequest } from './middleware/validation.middleware';
 import { rateLimiter } from './middleware/rate-limit.middleware';
 import { getGeminiApiKey } from './config';
+import { logger } from './utils/logger';
 
 const app = express();
 
@@ -22,9 +23,11 @@ async function initializeApp() {
       temperature: parseFloat(process.env.GEMINI_TEMPERATURE || '0.7'),
       maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || '2048'),
     });
-    console.log('Gemini service initialized successfully.');
+    logger.info('Gemini service initialized successfully');
   } catch (error) {
-    console.error('Failed to initialize Gemini service:', error);
+    logger.error('Failed to initialize Gemini service', { 
+      error: error instanceof Error ? error.message : String(error)
+    });
     process.exit(1); // Exit if API key is not available
   }
 }
@@ -63,11 +66,11 @@ app.use((req, res, next) => {
 // Updated CORS for extension compatibility
 app.use(cors({
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    console.log('CORS: Request from origin:', origin);
+    logger.debug('CORS request from origin', { origin });
     
     // Allow requests with no origin (like mobile apps, Postman, etc.)
     if (!origin) {
-      console.log('CORS: Allowing request with no origin');
+      logger.debug('Allowing request with no origin');
       callback(null, true);
       return;
     }
@@ -75,7 +78,7 @@ app.use(cors({
     // Allow Chrome and Firefox extension origins
     if (origin.startsWith('chrome-extension://') || 
         origin.startsWith('moz-extension://')) {
-      console.log('CORS: Allowing extension origin:', origin);
+      logger.debug('Allowing extension origin', { origin });
       callback(null, true);
       return;
     }
@@ -83,20 +86,20 @@ app.use(cors({
     // Allow localhost for development
     if (origin.startsWith('http://localhost:') ||
         origin.startsWith('https://localhost:')) {
-      console.log('CORS: Allowing localhost origin:', origin);
+      logger.debug('Allowing localhost origin', { origin });
       callback(null, true);
       return;
     }
 
     // Allow HTTPS websites (for content scripts)
     if (origin.startsWith('https://')) {
-      console.log('CORS: Allowing HTTPS origin:', origin);
+      logger.debug('Allowing HTTPS origin', { origin });
       callback(null, true);
       return;
     }
 
     // Block everything else
-    console.log('CORS: Blocking origin:', origin);
+    logger.warn('Blocking origin', { origin });
     callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
@@ -117,10 +120,12 @@ app.use(cors({
 
 // Additional explicit OPTIONS handler for troubleshooting
 app.options('*', (req, res) => {
-  console.log('OPTIONS: Explicit OPTIONS request received for:', req.path);
-  console.log('OPTIONS: Origin:', req.get('Origin'));
-  console.log('OPTIONS: Access-Control-Request-Method:', req.get('Access-Control-Request-Method'));
-  console.log('OPTIONS: Access-Control-Request-Headers:', req.get('Access-Control-Request-Headers'));
+  logger.debug('Explicit OPTIONS request received', { 
+    path: req.path,
+    origin: req.get('Origin'),
+    requestMethod: req.get('Access-Control-Request-Method'),
+    requestHeaders: req.get('Access-Control-Request-Headers')
+  });
   
   res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
@@ -133,12 +138,9 @@ app.options('*', (req, res) => {
 app.use(morgan('combined', {
   stream: {
     write: (message: string) => {
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: 'info',
-        message: message.trim(),
-        service: 'nomoscroll-backend'
-      }));
+      logger.info('HTTP request', { 
+        httpLog: message.trim()
+      });
     }
   }
 }));
@@ -183,13 +185,11 @@ app.post('/api/analyze', validateRequest, async (req, res, next) => {
   try {
     const { content, context } = req.body;
     
-    console.log(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      message: `Analysis request for domain: ${context.domain}`,
+    logger.info('Analysis request received', {
+      domain: context.domain,
       scrollCount: context.scrollCount,
       contentLength: content.length
-    }));
+    });
     
     const result = await geminiService.analyzeContent({
       content,
@@ -227,7 +227,10 @@ app.use(errorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
-  console.error(`404 Not Found: The endpoint "${req.method} ${req.originalUrl}" does not exist.`);
+  logger.warn('404 Not Found', { 
+    method: req.method,
+    path: req.originalUrl 
+  });
   res.status(404).json({ 
     error: 'Endpoint not found',
     path: req.originalUrl,
@@ -237,7 +240,7 @@ app.use('*', (req, res) => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  logger.info('SIGTERM received, shutting down gracefully');
   process.exit(0);
 });
 
@@ -245,9 +248,11 @@ process.on('SIGTERM', () => {
 initializeApp().then(() => {
     const port = process.env.PORT || 8080;
     app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
+        logger.info('Server started successfully', { port });
     });
 }).catch(err => {
-    console.error("Application initialization failed", err);
+    logger.error('Application initialization failed', { 
+      error: err instanceof Error ? err.message : String(err)
+    });
     process.exit(1);
 });

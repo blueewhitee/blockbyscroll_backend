@@ -1,3 +1,5 @@
+import { logger } from './utils/logger';
+
 /**
  * Gets the Gemini API key.
  *
@@ -12,12 +14,12 @@ export async function getGeminiApiKey(): Promise<string> {
   // Prioritize environment variable for local Docker and testing
   const envApiKey = process.env.GEMINI_API_KEY;
   if (envApiKey) {
-    console.log('Found GEMINI_API_KEY in environment variable.');
+    logger.info('Found GEMINI_API_KEY in environment variable');
     return envApiKey;
   }
 
   // Fallback to Google Cloud Secret Manager for production on GCP
-  console.log('GEMINI_API_KEY not in environment. Falling back to Secret Manager.');
+  logger.info('GEMINI_API_KEY not in environment, falling back to Secret Manager');
   try {
     const { SecretManagerServiceClient } = await import(
       '@google-cloud/secret-manager'
@@ -37,10 +39,12 @@ export async function getGeminiApiKey(): Promise<string> {
     if (!payload) {
       throw new Error(`Secret ${secretName} has no payload.`);
     }
-    console.log('Successfully retrieved secret from Secret Manager.');
+    logger.info('Successfully retrieved secret from Secret Manager');
     return payload;
   } catch (error) {
-    console.error('Failed to access secret from Secret Manager.', error);
+    logger.error('Failed to access secret from Secret Manager', { 
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw new Error(
       'GEMINI_API_KEY env var is not set and Secret Manager fallback failed.'
     );
