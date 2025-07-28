@@ -92,15 +92,15 @@ ANALYZE and return JSON with these exact fields:
   "break_suggestion": "specific suggestion or null"
 }
 
-REWARD STRATEGY - Always give some bonus scrolls to keep users engaged (VARY the amounts for unpredictability):
-- Deep Focus/Learning: 12-20 bonus scrolls (high educational value) - randomly pick within range
-- Active Socializing: 8-15 bonus scrolls (meaningful connections) - randomly pick within range
-- Intentional Leisure: 6-12 bonus scrolls (quality entertainment) - randomly pick within range
-- Casual Browsing/Catch-up: 3-8 bonus scrolls (light engagement reward) - randomly pick within range
-- Passive Consumption/Doomscrolling: 1-5 bonus scrolls (minimal but still rewarding) - randomly pick within range
-- Anxiety-Driven Information Seeking: 2-6 bonus scrolls (acknowledge need but encourage balance) - randomly pick within range
+REWARD STRATEGY - CRITICAL: Create VARIABLE rewards to prevent predictability:
+- Deep Focus/Learning: 12-20 scrolls - pick randomly (12,13,14,15,16,17,18,19,20)
+- Active Socializing: 8-15 scrolls - pick randomly (8,9,10,11,12,13,14,15)  
+- Intentional Leisure: 6-12 scrolls - pick randomly (6,7,8,9,10,11,12)
+- Casual Browsing/Catch-up: 3-8 scrolls - pick randomly (3,4,5,6,7,8) - NEVER always give 5!
+- Passive Consumption/Doomscrolling: 1-5 scrolls - pick randomly (1,2,3,4,5)
+- Anxiety-Driven Information Seeking: 2-6 scrolls - pick randomly (2,3,4,5,6)
 
-IMPORTANT: Do NOT always give the same number! Vary the bonus_scrolls within each range to create unpredictable rewards that keep users engaged.
+CRITICAL: Users are getting the same rewards repeatedly! You MUST vary the numbers each time to keep users engaged. Same content type should get different scroll amounts!
 
 EXAMPLES:
 
@@ -115,7 +115,7 @@ Educational content:
   "break_suggestion": null
 }
 
-Social media casual scroll:
+Social media casual scroll (Example A):
 {
   "user_pattern": "Casual Browsing/Catch-up",
   "addiction_risk": 4,
@@ -123,6 +123,28 @@ Social media casual scroll:
   "recommended_action": "gentle_reward",
   "bonus_scrolls": 7,
   "reasoning": "Nice catch-up session! Here are some bonus scrolls to keep exploring",
+  "break_suggestion": null
+}
+
+Social media casual scroll (Example B):
+{
+  "user_pattern": "Casual Browsing/Catch-up",
+  "addiction_risk": 4,
+  "educational_value": 3,
+  "recommended_action": "gentle_reward",
+  "bonus_scrolls": 4,
+  "reasoning": "Good social check-in! Here are some extra scrolls for staying connected",
+  "break_suggestion": null
+}
+
+Social media casual scroll (Example C):
+{
+  "user_pattern": "Casual Browsing/Catch-up",
+  "addiction_risk": 4,
+  "educational_value": 3,
+  "recommended_action": "gentle_reward",
+  "bonus_scrolls": 6,
+  "reasoning": "Staying updated with friends! Here are bonus scrolls to continue",
   "break_suggestion": null
 }
 
