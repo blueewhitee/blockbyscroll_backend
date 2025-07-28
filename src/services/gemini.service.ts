@@ -92,6 +92,14 @@ ANALYZE and return JSON with these exact fields:
   "break_suggestion": "specific suggestion or null"
 }
 
+REWARD STRATEGY - Always give some bonus scrolls to keep users engaged:
+- Deep Focus/Learning: 12-20 bonus scrolls (high educational value)
+- Active Socializing: 8-15 bonus scrolls (meaningful connections)
+- Intentional Leisure: 6-12 bonus scrolls (quality entertainment)
+- Casual Browsing/Catch-up: 3-8 bonus scrolls (light engagement reward)
+- Passive Consumption/Doomscrolling: 1-5 bonus scrolls (minimal but still rewarding)
+- Anxiety-Driven Information Seeking: 2-6 bonus scrolls (acknowledge need but encourage balance)
+
 EXAMPLES:
 
 Educational content:
@@ -100,20 +108,31 @@ Educational content:
   "addiction_risk": 2,
   "educational_value": 9,
   "recommended_action": "session_extension",
-  "bonus_scrolls": 15,
-  "reasoning": "You're learning valuable skills, keep going!",
+  "bonus_scrolls": 18,
+  "reasoning": "Excellent learning content! Here are extra scrolls to keep building those skills",
   "break_suggestion": null
 }
 
-Social media endless scroll:
+Social media casual scroll:
+{
+  "user_pattern": "Casual Browsing/Catch-up",
+  "addiction_risk": 4,
+  "educational_value": 3,
+  "recommended_action": "gentle_reward",
+  "bonus_scrolls": 5,
+  "reasoning": "Nice catch-up session! Here are some bonus scrolls to keep exploring",
+  "break_suggestion": null
+}
+
+Doomscrolling content:
 {
   "user_pattern": "Passive Consumption/Doomscrolling",
-  "addiction_risk": 8,
+  "addiction_risk": 7,
   "educational_value": 1,
-  "recommended_action": "immediate_break",
-  "bonus_scrolls": 0,
-  "reasoning": "Time for a break to recharge your focus",
-  "break_suggestion": "Take 3 deep breaths and look away from the screen"
+  "recommended_action": "gentle_reward",
+  "bonus_scrolls": 3,
+  "reasoning": "We all need some mindless browsing! Here are a few extra scrolls to keep you going - maybe try something enriching next?",
+  "break_suggestion": "Search for something you're genuinely curious about"
 }
 
 NOW ANALYZE AND RETURN ONLY JSON:`;
