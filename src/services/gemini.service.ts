@@ -92,13 +92,15 @@ ANALYZE and return JSON with these exact fields:
   "break_suggestion": "specific suggestion or null"
 }
 
-REWARD STRATEGY - Always give some bonus scrolls to keep users engaged:
-- Deep Focus/Learning: 12-20 bonus scrolls (high educational value)
-- Active Socializing: 8-15 bonus scrolls (meaningful connections)
-- Intentional Leisure: 6-12 bonus scrolls (quality entertainment)
-- Casual Browsing/Catch-up: 3-8 bonus scrolls (light engagement reward)
-- Passive Consumption/Doomscrolling: 1-5 bonus scrolls (minimal but still rewarding)
-- Anxiety-Driven Information Seeking: 2-6 bonus scrolls (acknowledge need but encourage balance)
+REWARD STRATEGY - Always give some bonus scrolls to keep users engaged (VARY the amounts for unpredictability):
+- Deep Focus/Learning: 12-20 bonus scrolls (high educational value) - randomly pick within range
+- Active Socializing: 8-15 bonus scrolls (meaningful connections) - randomly pick within range
+- Intentional Leisure: 6-12 bonus scrolls (quality entertainment) - randomly pick within range
+- Casual Browsing/Catch-up: 3-8 bonus scrolls (light engagement reward) - randomly pick within range
+- Passive Consumption/Doomscrolling: 1-5 bonus scrolls (minimal but still rewarding) - randomly pick within range
+- Anxiety-Driven Information Seeking: 2-6 bonus scrolls (acknowledge need but encourage balance) - randomly pick within range
+
+IMPORTANT: Do NOT always give the same number! Vary the bonus_scrolls within each range to create unpredictable rewards that keep users engaged.
 
 EXAMPLES:
 
@@ -119,7 +121,7 @@ Social media casual scroll:
   "addiction_risk": 4,
   "educational_value": 3,
   "recommended_action": "gentle_reward",
-  "bonus_scrolls": 5,
+  "bonus_scrolls": 7,
   "reasoning": "Nice catch-up session! Here are some bonus scrolls to keep exploring",
   "break_suggestion": null
 }
