@@ -15,15 +15,15 @@ export interface GeminiConfig {
  * @param {string} apiKey The Gemini API key.
  * @returns {GeminiConfig} The configuration for the Gemini service.
  */
-export function getGeminiConfig(apiKey: string): GeminiConfig {
+export function getGeminiConfig(apiKey: string): Readonly<GeminiConfig> {
   const model = 'gemini-2.0-flash-lite';
-  logger.info(`Hardcoding Gemini model to: ${model}`);
-  return {
+  logger.debug(`Gemini model fixed to: ${model}`);
+  return Object.freeze({
     apiKey,
     model,
     temperature: 0.7,
     maxTokens: 2048,
-  };
+  });
 }
 
 /**
