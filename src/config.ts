@@ -1,5 +1,31 @@
 import { logger } from './utils/logger';
 
+export interface GeminiConfig {
+  apiKey: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+}
+
+/**
+ * Returns a hardcoded configuration for the Gemini service.
+ * This function ensures that the model is always 'gemini-2.0-flash-lite'
+ * and cannot be overridden by environment variables.
+ *
+ * @param {string} apiKey The Gemini API key.
+ * @returns {GeminiConfig} The configuration for the Gemini service.
+ */
+export function getGeminiConfig(apiKey: string): GeminiConfig {
+  const model = 'gemini-2.0-flash-lite';
+  logger.info(`Hardcoding Gemini model to: ${model}`);
+  return {
+    apiKey,
+    model,
+    temperature: 0.7,
+    maxTokens: 2048,
+  };
+}
+
 /**
  * Gets the Gemini API key.
  *

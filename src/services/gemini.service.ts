@@ -1,4 +1,11 @@
 import { logger } from '../utils/logger';
+import {
+  GoogleGenerativeAI,
+  GenerationConfig,
+  SafetySetting,
+  HarmCategory,
+  HarmBlockThreshold,
+} from '@google/generative-ai';
 
 export interface GeminiConfig {
   apiKey: string;
@@ -32,352 +39,133 @@ export interface AIAnalysisRequest {
   };
 }
 
-interface GeminiApiResponse {
-  candidates: {
-    content: {
-      parts: { text: string }[];
-    };
-  }[];
-}
-
 export class GeminiService {
-  private config: GeminiConfig;
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  private genAI: GoogleGenerativeAI;
+  private generationConfig: GenerationConfig;
+  private safetySettings: SafetySetting[];
+  private model: string;
 
   constructor(config: GeminiConfig) {
-    this.config = {
-      ...config,
-      model: config.model || 'gemini-2.0-flash-lite' // Latest model as of 2025
-    };
-    
     if (!config.apiKey) {
       throw new Error('Gemini API key is required');
     }
+    this.genAI = new GoogleGenerativeAI(config.apiKey);
+    this.model = config.model;
+    this.generationConfig = {
+      temperature: config.temperature,
+      maxOutputTokens: config.maxTokens,
+      responseMimeType: 'application/json',
+    };
+    this.safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+    ];
   }
 
   public async analyzeContent(request: AIAnalysisRequest): Promise<AIAnalysisResponse> {
     try {
       const prompt = this.buildPrompt(request);
-      const response = await this.callGeminiAPI(prompt);
-      return this.parseResponse(response);
+      const generativeModel = this.genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: this.generationConfig,
+        safetySettings: this.safetySettings,
+      });
+
+      const result = await generativeModel.generateContent(prompt);
+      const response = result.response;
+      const jsonText = response.text();
+      
+      return JSON.parse(jsonText) as AIAnalysisResponse;
     } catch (error) {
-      logger.error('Error analyzing content', { error: error instanceof Error ? error.message : String(error) });
-      return this.getFallbackResponse(error);
+      logger.error('Error analyzing content with Gemini', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error('Failed to analyze content with Gemini');
     }
+  }
+
+  public getConfig(): GeminiConfig {
+    return {
+        apiKey: '[redacted]',
+        model: this.model,
+        temperature: this.generationConfig.temperature || 0,
+        maxTokens: this.generationConfig.maxOutputTokens || 0,
+    };
   }
 
   private buildPrompt(request: AIAnalysisRequest): string {
+    // This prompt remains the same as it's about the logic, not the API call
     const { content, context } = request;
-    
-    return `You are a digital wellness AI that analyzes scrolling behavior. Return ONLY valid JSON, no other text.
-
-CONTEXT:
-- Domain: ${context.domain}
-- Scrolls: ${context.scrollCount}/${context.maxScrolls}
-- Time scrolling: ${context.scrollTime} minutes
-- Time of day: ${context.timeOfDay}
-
-CONTENT:
-"${content.substring(0, 1000)}..."
-
-ANALYZE and return JSON with these exact fields:
-
-{
-  "user_pattern": "Deep Focus/Learning" | "Active Socializing" | "Intentional Leisure" | "Casual Browsing/Catch-up" | "Passive Consumption/Doomscrolling" | "Anxiety-Driven Information Seeking",
-  "addiction_risk": 0-10,
-  "educational_value": 0-10,
-  "recommended_action": "session_extension" | "gentle_reward" | "maintain_limit" | "show_warning" | "immediate_break",
-  "bonus_scrolls": 0-20,
-  "reasoning": "brief explanation",
-  "break_suggestion": "specific suggestion or null"
-}
-
-REWARD STRATEGY - CRITICAL: Create VARIABLE rewards to prevent predictability:
-- Deep Focus/Learning: 12-20 scrolls - pick randomly (12,13,14,15,16,17,18,19,20)
-- Active Socializing: 8-15 scrolls - pick randomly (8,9,10,11,12,13,14,15)  
-- Intentional Leisure: 6-12 scrolls - pick randomly (6,7,8,9,10,11,12)
-- Casual Browsing/Catch-up: 3-8 scrolls - pick randomly (3,4,5,6,7,8) - NEVER always give 5!
-- Passive Consumption/Doomscrolling: 1-5 scrolls - pick randomly (1,2,3,4,5)
-- Anxiety-Driven Information Seeking: 2-6 scrolls - pick randomly (2,3,4,5,6)
-
-CRITICAL: Users are getting the same rewards repeatedly! You MUST vary the numbers each time to keep users engaged. Same content type should get different scroll amounts!
-
-EXAMPLES:
-
-Educational content:
-{
-  "user_pattern": "Deep Focus/Learning",
-  "addiction_risk": 2,
-  "educational_value": 9,
-  "recommended_action": "session_extension",
-  "bonus_scrolls": 18,
-  "reasoning": "Excellent learning content! Here are extra scrolls to keep building those skills",
-  "break_suggestion": null
-}
-
-Social media casual scroll (Example A):
-{
-  "user_pattern": "Casual Browsing/Catch-up",
-  "addiction_risk": 4,
-  "educational_value": 3,
-  "recommended_action": "gentle_reward",
-  "bonus_scrolls": 7,
-  "reasoning": "Nice catch-up session! Here are some bonus scrolls to keep exploring",
-  "break_suggestion": null
-}
-
-Social media casual scroll (Example B):
-{
-  "user_pattern": "Casual Browsing/Catch-up",
-  "addiction_risk": 4,
-  "educational_value": 3,
-  "recommended_action": "gentle_reward",
-  "bonus_scrolls": 4,
-  "reasoning": "Good social check-in! Here are some extra scrolls for staying connected",
-  "break_suggestion": null
-}
-
-Social media casual scroll (Example C):
-{
-  "user_pattern": "Casual Browsing/Catch-up",
-  "addiction_risk": 4,
-  "educational_value": 3,
-  "recommended_action": "gentle_reward",
-  "bonus_scrolls": 6,
-  "reasoning": "Staying updated with friends! Here are bonus scrolls to continue",
-  "break_suggestion": null
-}
-
-Doomscrolling content:
-{
-  "user_pattern": "Passive Consumption/Doomscrolling",
-  "addiction_risk": 7,
-  "educational_value": 1,
-  "recommended_action": "gentle_reward",
-  "bonus_scrolls": 3,
-  "reasoning": "We all need some mindless browsing! Here are a few extra scrolls to keep you going - maybe try something enriching next?",
-  "break_suggestion": "Search for something you're genuinely curious about"
-}
-
-NOW ANALYZE AND RETURN ONLY JSON:`;
-  }
-
-  private async callGeminiAPI(prompt: string): Promise<string> {
-    const url = `${this.baseUrl}/${this.config.model}:generateContent?key=${this.config.apiKey}`;
-    
-    logger.debug('Making API call to Gemini', { 
-      url: url.replace(this.config.apiKey, 'API_KEY_HIDDEN'),
-      model: this.config.model,
-      temperature: this.config.temperature,
-      maxTokens: this.config.maxTokens
-    });
-    
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: this.config.temperature,
-        maxOutputTokens: this.config.maxTokens,
-        topP: 0.8,
-        topK: 40
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        }
-      ]
-    };
-
-    logger.debug('Gemini API request body', { requestBody });
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'NoMoScroll-Backend/1.0.0'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    logger.debug('Gemini API response status', { 
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries())
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('Gemini API error response', { 
-        status: response.status,
-        errorText 
-      });
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
-    }
-
-    // Fix: Properly type the response
-    const data = await response.json() as GeminiApiResponse;
-    logger.debug('Raw Gemini API response', { data });
-    
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      logger.error('Invalid Gemini response structure', { data });
-      throw new Error('Invalid response format from Gemini API');
-    }
-
-    const responseText = data.candidates[0].content.parts[0].text;
-    logger.debug('Extracted Gemini response text', { responseText });
-    
-    return responseText;
-  }
-
-  private parseResponse(responseText: string): AIAnalysisResponse {
-    logger.debug('Parsing Gemini response', { 
-      responseText,
-      responseLength: responseText.length 
-    });
-    
-    try {
-      // Clean the response text more thoroughly
-      let cleanedText = responseText.trim();
+    return `
+      Analyze the provided text content and user behavior to determine the user's scrolling pattern, addiction risk, and educational value.
       
-      // Remove markdown code blocks if present
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      **User Context:**
+      - Domain: ${context.domain}
+      - Time of Day: ${context.timeOfDay}
+      - Scroll Count: ${context.scrollCount} / ${context.maxScrolls}
+      - Time Spent Scrolling (seconds): ${context.scrollTime}
+
+      **Content Snippet (first 500 chars):**
+      \`\`\`
+      ${content.substring(0, 500)}
+      \`\`\`
+
+      **Instructions:**
+      Respond with a JSON object matching this exact structure:
+      \`\`\`json
+      {
+        "user_pattern": "'Deep Focus/Learning' | 'Active Socializing' | 'Intentional Leisure' | 'Casual Browsing/Catch-up' | 'Passive Consumption/Doomscrolling' | 'Anxiety-Driven Information Seeking'",
+        "addiction_risk": "A number between 0 (low) and 1 (high). Consider scroll speed, time, and content type.",
+        "educational_value": "A number between 0 (low) and 1 (high).",
+        "recommended_action": "'session_extension' | 'gentle_reward' | 'maintain_limit' | 'show_warning' | 'immediate_break'",
+        "bonus_scrolls": "A number of extra scrolls to grant. Typically 0, or 5-10 for highly productive content.",
+        "reasoning": "A brief explanation for your analysis.",
+        "break_suggestion": "Optional: A short, actionable suggestion for a break if recommended_action is 'show_warning' or 'immediate_break'."
       }
-      
-      // More aggressive JSON extraction
-      const jsonPatterns = [
-        /\{[\s\S]*?\}(?=\s*$)/,  // JSON at the end
-        /\{[\s\S]*?\}(?=\s*\n)/,  // JSON followed by newline
-        /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/,  // Nested JSON
-        /\{[\s\S]*\}/  // Any JSON-like structure
-      ];
-      
-      for (const pattern of jsonPatterns) {
-        const match = cleanedText.match(pattern);
-        if (match) {
-          cleanedText = match[0];
-          break;
-        }
-      }
-      
-      // Remove any trailing text after the JSON
-      const jsonEnd = cleanedText.lastIndexOf('}');
-      if (jsonEnd !== -1) {
-        cleanedText = cleanedText.substring(0, jsonEnd + 1);
-      }
-      
-      logger.debug('Cleaned text for JSON parsing', { cleanedText });
-      
-      const parsed = JSON.parse(cleanedText);
-      logger.debug('Successfully parsed JSON from Gemini', { parsed });
-      
-      // Validate required fields exist
-      if (!parsed.user_pattern || !parsed.recommended_action) {
-        logger.error('Missing required fields in Gemini response', { parsed });
-        throw new Error('Invalid response structure');
-      }
-      
-      return {
-        user_pattern: parsed.user_pattern || 'Casual Browsing/Catch-up',
-        addiction_risk: Math.max(0, Math.min(10, parsed.addiction_risk || 5)),
-        educational_value: Math.max(0, Math.min(10, parsed.educational_value || 0)),
-        recommended_action: parsed.recommended_action || 'maintain_limit',
-        bonus_scrolls: Math.max(0, Math.min(20, parsed.bonus_scrolls || 0)),
-        reasoning: parsed.reasoning || 'Analysis completed',
-        break_suggestion: parsed.break_suggestion || null,
-        // Legacy fields for backward compatibility
-        content_type: parsed.content_type || 'unknown',
-        confidence_score: Math.max(0, Math.min(1, parsed.confidence_score || 0.8))
-      };
-    } catch (error) {
-      logger.error('Error parsing Gemini response', { 
-        error: error instanceof Error ? error.message : String(error),
-        responseText 
-      });
-      
-      // Try one more time with a simple regex extraction
-      try {
-        const simpleMatch = responseText.match(/\{[^{}]*"user_pattern"[^{}]*\}/);
-        if (simpleMatch) {
-          const parsed = JSON.parse(simpleMatch[0]);
-          logger.info('Recovered Gemini response with simple regex', { parsed });
-          return this.normalizeResponse(parsed);
-        }
-      } catch (recoveryError) {
-        logger.error('Recovery attempt failed', { 
-          recoveryError: recoveryError instanceof Error ? recoveryError.message : String(recoveryError)
-        });
-      }
-      
-      throw new Error('Failed to parse AI response');
-    }
-  }
+      \`\`\`
 
-  private normalizeResponse(parsed: any): AIAnalysisResponse {
-    return {
-      user_pattern: parsed.user_pattern || 'Casual Browsing/Catch-up',
-      addiction_risk: Math.max(0, Math.min(10, parsed.addiction_risk || 5)),
-      educational_value: Math.max(0, Math.min(10, parsed.educational_value || 0)),
-      recommended_action: parsed.recommended_action || 'maintain_limit',
-      bonus_scrolls: Math.max(0, Math.min(20, parsed.bonus_scrolls || 0)),
-      reasoning: parsed.reasoning || 'Analysis completed',
-      break_suggestion: parsed.break_suggestion || null,
-      content_type: parsed.content_type || 'unknown',
-      confidence_score: Math.max(0, Math.min(1, parsed.confidence_score || 0.8))
-    };
-  }
-
-  private getFallbackResponse(error: any): AIAnalysisResponse {
-    logger.error('Using fallback response due to error', { 
-      error: error instanceof Error ? error.message : String(error)
-    });
-    
-    return {
-      user_pattern: 'Casual Browsing/Catch-up',
-      addiction_risk: 5,
-      educational_value: 5,
-      recommended_action: 'maintain_limit',
-      bonus_scrolls: 0,
-      reasoning: 'AI analysis unavailable, maintaining original scroll limit',
-      break_suggestion: 'Take a 5-minute break to rest your eyes',
-      // Legacy fields for backward compatibility
-      content_type: 'unknown',
-      confidence_score: 0.0
-    };
+      **Analysis Guidelines:**
+      1.  **user_pattern**:
+          - 'Deep Focus/Learning': Long articles, educational sites (e.g., docs, tutorials), focused reading.
+          - 'Active Socializing': Social media, but with evidence of engagement (e.g., reading long comments, profiles).
+          - 'Intentional Leisure': Hobby sites, planning activities, reading reviews.
+          - 'Casual Browsing/Catch-up': News headlines, forums, general interest.
+          - 'Passive Consumption/Doomscrolling': Endless feeds (social media, news), short-form video, high scroll rate with low engagement.
+          - 'Anxiety-Driven Information Seeking': Repeatedly checking news, health sites, or forums for urgent/negative information.
+      2.  **addiction_risk**: High for 'Doomscrolling' and 'Anxiety-Driven'. Moderate for 'Casual Browsing'. Low for 'Deep Focus'.
+      3.  **educational_value**: High for 'Deep Focus'. Low for 'Doomscrolling'.
+      4.  **recommended_action**:
+          - 'session_extension'/'gentle_reward': For 'Deep Focus' or highly educational content.
+          - 'maintain_limit': For 'Intentional Leisure' or 'Active Socializing'.
+          - 'show_warning': When approaching the limit with 'Casual Browsing' or signs of doomscrolling.
+          - 'immediate_break': For clear 'Doomscrolling' or 'Anxiety-Driven' patterns, especially if over the limit.
+      5.  **reasoning**: Be concise. Example: "User is in deep focus on a technical article, which is productive."
+      `;
   }
 
   public async testConnection(): Promise<boolean> {
     try {
-      const testRequest: AIAnalysisRequest = {
-        content: 'Test content for API validation',
-        context: {
-          scrollCount: 1,
-          maxScrolls: 30,
-          domain: 'test.com',
-          timestamp: Date.now(),
-          timeOfDay: new Date().toLocaleTimeString(),
-          scrollTime: 1
-        }
-      };
-      
-      await this.analyzeContent(testRequest);
-      return true;
+      const generativeModel = this.genAI.getGenerativeModel({ model: this.model });
+      const prompt = 'This is a test prompt.';
+      const result = await generativeModel.generateContent(prompt);
+      return result.response.text().length > 0;
     } catch (error) {
-      logger.error('Gemini connection test failed', { 
-        error: error instanceof Error ? error.message : String(error)
+      logger.error('Gemini connection test failed', {
+        error: error instanceof Error ? error.message : String(error),
       });
       return false;
     }

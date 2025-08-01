@@ -59,15 +59,7 @@ Create a `.env` file in the root directory:
 # Required
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Optional - Model Configuration
-GEMINI_MODEL=gemini-2.0-flash-lite
-GEMINI_TEMPERATURE=0.7
-GEMINI_MAX_TOKENS=2048
-
-# Optional - Server Configuration
-PORT=8080
-
-# Production - Google Cloud Configuration
+# Production - Google Cloud Configuration (only for deployment)
 GCP_PROJECT=your-gcp-project-id
 GEMINI_API_KEY_SECRET=GEMINI_API_KEY
 ```

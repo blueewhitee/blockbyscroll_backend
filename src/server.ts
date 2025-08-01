@@ -6,7 +6,7 @@ import { GeminiService } from './services/gemini.service';
 import { errorHandler } from './middleware/error.middleware';
 import { validateRequest } from './middleware/validation.middleware';
 import { rateLimiter } from './middleware/rate-limit.middleware';
-import { getGeminiApiKey } from './config';
+import { getGeminiApiKey, getGeminiConfig } from './config';
 import { logger } from './utils/logger';
 
 const app = express();
@@ -17,12 +17,8 @@ let geminiService: GeminiService;
 async function initializeApp() {
   try {
     const apiKey = await getGeminiApiKey();
-    geminiService = new GeminiService({
-      apiKey,
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
-      temperature: parseFloat(process.env.GEMINI_TEMPERATURE || '0.7'),
-      maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || '2048'),
-    });
+    const geminiConfig = getGeminiConfig(apiKey);
+    geminiService = new GeminiService(geminiConfig);
     logger.info('Gemini service initialized successfully');
   } catch (error) {
     logger.error('Failed to initialize Gemini service', { 
@@ -214,7 +210,7 @@ app.get('/api/test', async (req, res, next) => {
     res.json({
       success: true,
       connected: isConnected,
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
+      model: geminiService.getConfig().model,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
