@@ -17,17 +17,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+    
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        cache: 'pnpm'
         
     - name: Install dependencies
-      run: npm ci
+      run: pnpm install
       
     - name: Build project
-      run: npm run build
+      run: pnpm run build
       
     - name: Check TypeScript compilation
-      run: npx tsc --noEmit
+      run: pnpm exec tsc --noEmit
