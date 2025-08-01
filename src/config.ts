@@ -9,14 +9,14 @@ export interface GeminiConfig {
 
 /**
  * Returns a hardcoded configuration for the Gemini service.
- * This function ensures that the model is always 'gemini-2.0-flash-lite'
+ * This function ensures that the model is always 'gemini-2.0-flash-001-lite'
  * and cannot be overridden by environment variables.
  *
  * @param {string} apiKey The Gemini API key.
  * @returns {GeminiConfig} The configuration for the Gemini service.
  */
 export function getGeminiConfig(apiKey: string): Readonly<GeminiConfig> {
-  const model = 'gemini-2.0-flash-lite';
+  const model = 'gemini-2.0-flash-001-lite';
   logger.debug(`Gemini model fixed to: ${model}`);
   return Object.freeze({
     apiKey,

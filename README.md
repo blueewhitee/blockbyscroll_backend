@@ -172,7 +172,7 @@ GET /api/test
 {
   "success": true,
   "connected": true,
-  "model": "gemini-2.0-flash-lite",
+  "model": "gemini-2.0-flash-001-lite",
   "timestamp": "2025-07-26T10:30:00.000Z"
 }
 ```
