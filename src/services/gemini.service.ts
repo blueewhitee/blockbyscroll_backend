@@ -131,7 +131,7 @@ export class GeminiService {
         "addiction_risk": "A number between 0 (low) and 1 (high). Consider scroll speed, time, and content type.",
         "educational_value": "A number between 0 (low) and 1 (high).",
         "recommended_action": "'session_extension' | 'gentle_reward' | 'maintain_limit' | 'show_warning' | 'immediate_break'",
-        "bonus_scrolls": "Number of extra scrolls to grant. Be generous: 20-25 for educational content, 15-20 for social/leisure, 10-15 for casual browsing, 0 only for doomscrolling.",
+        "bonus_scrolls": "MUST be a random integer within the specified ranges below. Vary the number each time.",
         "reasoning": "A brief explanation with attitude matching the pattern type.",
         "break_suggestion": "Optional: A short, actionable suggestion for a break if recommended_action is 'show_warning' or 'immediate_break'."
       }
@@ -152,12 +152,14 @@ export class GeminiService {
           - 'maintain_limit': For 'Intentional Leisure' or 'Active Socializing'.
           - 'show_warning': When approaching the limit with 'Casual Browsing' or signs of doomscrolling.
           - 'immediate_break': For clear 'Doomscrolling' or 'Anxiety-Driven' patterns, especially if over the limit.
-      5.  **bonus_scrolls**: Award bonus scrolls generously:
-          - Deep Focus/Learning: 20-25 scrolls
-          - Active Socializing: 15-20 scrolls
-          - Intentional Leisure: 10-15 scrolls
-          - Casual Browsing: 8-13 scrolls
-          - Doomscrolling/Anxiety-Driven: 3-5 scrolls
+      5.  **bonus_scrolls**: CRITICAL - You MUST award bonus scrolls for every pattern except extreme cases:
+          - Deep Focus/Learning: ALWAYS award between 20-25 scrolls (pick one: 20, 21, 22, 23, 24, or 25)
+          - Active Socializing: ALWAYS award between 15-20 scrolls (pick one: 15, 16, 17, 18, 19, or 20)
+          - Intentional Leisure: ALWAYS award between 10-15 scrolls (pick one: 10, 11, 12, 13, 14, or 15)
+          - Casual Browsing: ALWAYS award between 8-13 scrolls (pick one: 8, 9, 10, 11, 12, or 13)
+          - Doomscrolling/Anxiety-Driven: ALWAYS award between 3-5 scrolls (pick one: 3, 4, or 5)
+          - NEVER return 0 bonus scrolls unless it's truly harmful content
+          - Example: For "Staying updated with general content" (Casual Browsing) → return 10 or 11 or 12, etc.
       6.  **reasoning**: Match the tone to the pattern. Keep it short and to the point:
           - Deep Focus/Learning: Enthusiastic/Encouraging tone. "Excellent! Deep learning on [topic]. Keep going!"
           - Active Socializing: Warm/Friendly tone. "Great social engagement with friends and community!"
@@ -165,6 +167,16 @@ export class GeminiService {
           - Casual Browsing: Neutral/Informative tone. "Staying updated with general content."
           - Doomscrolling: Concerned/Firm tone. "Mindless scrolling detected. Time for a break!"
           - Anxiety-Driven: Gentle/Caring tone. "Noticed anxious browsing. Let's take a calming break."
+      
+      **CRITICAL RULES:**
+      1. Always pick a different random number within the range
+      2. NEVER return 0 bonus scrolls (minimum is 3 for worst content)
+      3. For "Staying updated" or news content → Casual Browsing → 8-13 scrolls
+      4. Examples:
+         - For Deep Focus: Sometimes return 20, sometimes 23, sometimes 25, etc.
+         - For Casual Browsing: Sometimes return 8, sometimes 11, sometimes 13, etc.
+         - NEVER return the same number repeatedly for the same pattern type
+      5. If you classified as "Casual Browsing" and said "Staying updated with general content" → you MUST return between 8-13 bonus scrolls
       `;
   }
 
