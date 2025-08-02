@@ -21,7 +21,7 @@ export interface AIAnalysisResponse {
   recommended_action: 'session_extension' | 'gentle_reward' | 'maintain_limit' | 'show_warning' | 'immediate_break';
   bonus_scrolls: number;
   reasoning: string;
-  break_suggestion?: string;
+  break_suggestion?: string | null;
   // Legacy fields for backward compatibility
   content_type?: 'productive' | 'neutral' | 'entertainment' | 'doomscroll' | 'unknown';
   confidence_score?: number;
@@ -89,13 +89,44 @@ export class GeminiService {
       const response = result.response;
       const jsonText = response.text();
       
-      return JSON.parse(jsonText) as AIAnalysisResponse;
+      const parsed = JSON.parse(jsonText);
+      
+      // Runtime validation to ensure type safety
+      if (!this.isValidAIAnalysisResponse(parsed)) {
+        logger.error('Invalid AI response structure', { parsed });
+        throw new Error('AI returned invalid response structure');
+      }
+      
+      return parsed as AIAnalysisResponse;
     } catch (error) {
       logger.error('Error analyzing content with Gemini', {
         error: error instanceof Error ? error.message : String(error),
       });
       throw new Error('Failed to analyze content with Gemini');
     }
+  }
+
+  private isValidAIAnalysisResponse(obj: any): obj is AIAnalysisResponse {
+    const validPatterns = ['Deep Focus/Learning', 'Active Socializing', 'Intentional Leisure', 'Casual Browsing/Catch-up', 'Passive Consumption/Doomscrolling', 'Anxiety-Driven Information Seeking'];
+    const validActions = ['session_extension', 'gentle_reward', 'maintain_limit', 'show_warning', 'immediate_break'];
+    
+    return (
+      obj &&
+      typeof obj === 'object' &&
+      typeof obj.user_pattern === 'string' &&
+      validPatterns.includes(obj.user_pattern) &&
+      typeof obj.addiction_risk === 'number' &&
+      obj.addiction_risk >= 0 && obj.addiction_risk <= 1 &&
+      typeof obj.educational_value === 'number' &&
+      obj.educational_value >= 0 && obj.educational_value <= 1 &&
+      typeof obj.recommended_action === 'string' &&
+      validActions.includes(obj.recommended_action) &&
+      typeof obj.bonus_scrolls === 'number' &&
+      Number.isInteger(obj.bonus_scrolls) &&
+      obj.bonus_scrolls >= 0 &&
+      typeof obj.reasoning === 'string' &&
+      (obj.break_suggestion === undefined || obj.break_suggestion === null || typeof obj.break_suggestion === 'string')
+    );
   }
 
   public getConfig(): GeminiConfig {
@@ -127,13 +158,13 @@ export class GeminiService {
       Respond with a JSON object matching this exact structure:
       \`\`\`json
       {
-        "user_pattern": "One of: 'Deep Focus/Learning', 'Active Socializing', 'Intentional Leisure', 'Casual Browsing/Catch-up', 'Passive Consumption/Doomscrolling', 'Anxiety-Driven Information Seeking'",
+        "user_pattern": "Deep Focus/Learning",
         "addiction_risk": 0.5,
         "educational_value": 0.7,
-        "recommended_action": "One of: 'session_extension', 'gentle_reward', 'maintain_limit', 'show_warning', 'immediate_break'",
+        "recommended_action": "session_extension",
         "bonus_scrolls": 12,
         "reasoning": "Brief explanation with appropriate tone for the pattern",
-        "break_suggestion": "Optional: Only include if recommended_action is 'show_warning' or 'immediate_break'. Can be null."
+        "break_suggestion": null
       }
       \`\`\`
 
