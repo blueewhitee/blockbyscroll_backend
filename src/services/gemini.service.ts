@@ -108,7 +108,6 @@ export class GeminiService {
   }
 
   private buildPrompt(request: AIAnalysisRequest): string {
-    // This prompt remains the same as it's about the logic, not the API call
     const { content, context } = request;
     return `
       Analyze the provided text content and user behavior to determine the user's scrolling pattern, addiction risk, and educational value.
@@ -132,8 +131,8 @@ export class GeminiService {
         "addiction_risk": "A number between 0 (low) and 1 (high). Consider scroll speed, time, and content type.",
         "educational_value": "A number between 0 (low) and 1 (high).",
         "recommended_action": "'session_extension' | 'gentle_reward' | 'maintain_limit' | 'show_warning' | 'immediate_break'",
-        "bonus_scrolls": "A number of extra scrolls to grant. Typically 0, or 5-10 for highly productive content.",
-        "reasoning": "A brief explanation for your analysis.",
+        "bonus_scrolls": "Number of extra scrolls to grant. Be generous: 20-25 for educational content, 15-20 for social/leisure, 10-15 for casual browsing, 0 only for doomscrolling.",
+        "reasoning": "A brief explanation with attitude matching the pattern type.",
         "break_suggestion": "Optional: A short, actionable suggestion for a break if recommended_action is 'show_warning' or 'immediate_break'."
       }
       \`\`\`
@@ -153,7 +152,19 @@ export class GeminiService {
           - 'maintain_limit': For 'Intentional Leisure' or 'Active Socializing'.
           - 'show_warning': When approaching the limit with 'Casual Browsing' or signs of doomscrolling.
           - 'immediate_break': For clear 'Doomscrolling' or 'Anxiety-Driven' patterns, especially if over the limit.
-      5.  **reasoning**: Be concise. Example: "User is in deep focus on a technical article, which is productive."
+      5.  **bonus_scrolls**: Award bonus scrolls generously:
+          - Deep Focus/Learning: 20-25 scrolls
+          - Active Socializing: 15-20 scrolls
+          - Intentional Leisure: 10-15 scrolls
+          - Casual Browsing: 8-13 scrolls
+          - Doomscrolling/Anxiety-Driven: 3-5 scrolls
+      6.  **reasoning**: Match the tone to the pattern. Keep it short and to the point:
+          - Deep Focus/Learning: Enthusiastic/Encouraging tone. "Excellent! Deep learning on [topic]. Keep going!"
+          - Active Socializing: Warm/Friendly tone. "Great social engagement with friends and community!"
+          - Intentional Leisure: Cheerful/Supportive tone. "Nice! Planning your [activity]. Enjoy the research!"
+          - Casual Browsing: Neutral/Informative tone. "Staying updated with general content."
+          - Doomscrolling: Concerned/Firm tone. "Mindless scrolling detected. Time for a break!"
+          - Anxiety-Driven: Gentle/Caring tone. "Noticed anxious browsing. Let's take a calming break."
       `;
   }
 
