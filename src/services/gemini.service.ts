@@ -127,15 +127,24 @@ export class GeminiService {
       Respond with a JSON object matching this exact structure:
       \`\`\`json
       {
-        "user_pattern": "'Deep Focus/Learning' | 'Active Socializing' | 'Intentional Leisure' | 'Casual Browsing/Catch-up' | 'Passive Consumption/Doomscrolling' | 'Anxiety-Driven Information Seeking'",
-        "addiction_risk": "A number between 0 (low) and 1 (high). Consider scroll speed, time, and content type.",
-        "educational_value": "A number between 0 (low) and 1 (high).",
-        "recommended_action": "'session_extension' | 'gentle_reward' | 'maintain_limit' | 'show_warning' | 'immediate_break'",
-        "bonus_scrolls": "MUST be a random integer within the specified ranges below. Vary the number each time.",
-        "reasoning": "A brief explanation with attitude matching the pattern type.",
-        "break_suggestion": "Optional: A short, actionable suggestion for a break if recommended_action is 'show_warning' or 'immediate_break'."
+        "user_pattern": "One of: 'Deep Focus/Learning', 'Active Socializing', 'Intentional Leisure', 'Casual Browsing/Catch-up', 'Passive Consumption/Doomscrolling', 'Anxiety-Driven Information Seeking'",
+        "addiction_risk": 0.5,
+        "educational_value": 0.7,
+        "recommended_action": "One of: 'session_extension', 'gentle_reward', 'maintain_limit', 'show_warning', 'immediate_break'",
+        "bonus_scrolls": 12,
+        "reasoning": "Brief explanation with appropriate tone for the pattern",
+        "break_suggestion": "Optional: Only include if recommended_action is 'show_warning' or 'immediate_break'. Can be null."
       }
       \`\`\`
+
+      **CRITICAL: Return valid JSON with these exact field names and types:**
+      - user_pattern: string (exact match from the 6 options above)
+      - addiction_risk: number between 0.0 and 1.0
+      - educational_value: number between 0.0 and 1.0  
+      - recommended_action: string (exact match from the 5 options above)
+      - bonus_scrolls: integer (within specified ranges)
+      - reasoning: string
+      - break_suggestion: string or null (only for warnings/breaks)
 
       **Analysis Guidelines:**
       1.  **user_pattern**:
